@@ -5,3 +5,5 @@ class Movietop(BaseModel):
     id: int
     cost: int
     director: str
+    is_published: bool
+    cover: str
