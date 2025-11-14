@@ -1,5 +1,5 @@
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 import uvicorn
 import shutil
 
@@ -14,6 +14,10 @@ movies = {
         is_published=True,
         cover="default.jpg"
     ) for i in range(10)
+}
+
+users = {
+    "admin": "admin"
 }
 
 app = FastAPI()
@@ -84,6 +88,52 @@ async def api_create_movie(
     )
 
     return RedirectResponse(f"/movietop/{len(movies) - 1}", status_code=303)
+
+@app.get("/login", response_class=HTMLResponse)
+def login_user():
+    html = """
+    <form action="/login" method="post" enctype="multipart/form-data">
+        <div class="form-group">
+            <label for="login">Логин:</label>
+            <input type="text" id="login" name="login" required>
+        </div>
+
+        <div class="form-group">
+            <label for="password">Пароль:</label>
+            <input type="text" id="password" name="password" required>
+        </div>
+        
+        <button type="submit">Войти</button>
+    </form>
+    """
+    return html
+
+@app.post("/login")
+def api_login_user(
+    request: Request,
+    login: str = Form(...),
+    password: str = Form(...),
+):
+    if users.get(login, 0) == password:
+        response = RedirectResponse("/user", status_code=303)
+        response.set_cookie(key="session_token", value="admin", max_age=2*60)
+    else:
+        response = RedirectResponse("/login", status_code=303)
+    return response
+
+@app.get("/user")
+def login_user(request: Request):
+    token = request.cookies.get("session_token")
+    if not token or not users.get(token, 0):
+        return {"message": "Unauthorized"}
+    
+    content = {"user": {
+        "login": "admin",
+        "password": "admin"
+    }}
+    response = JSONResponse(content=content)
+    response.set_cookie(key="session_token", value="admin", max_age=2*60)
+    return response
 
 @app.get("/movietop/{id}")
 def get_movie_by_id(id: int):
